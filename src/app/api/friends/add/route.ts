@@ -13,10 +13,10 @@ export async function POST(req: Request) {
 
     const { email: emailToAdd } = addFriendValidator.parse(body.email)
 
-    const idToAdd = (await fetchRedis(
+    const idToAdd = await fetchRedis(
       'get',
       `user:email:${emailToAdd}`
-    )) as string
+    ) as string
 
     if (!idToAdd) {
       return new Response('This person does not exist.', { status: 400 })
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       'sismember',
       `user:${idToAdd}:incoming_friend_requests`,
       session.user.id
-    )) as 0 | 1
+    )) as 0|1
 
     if (isAlreadyAdded) {
       return new Response('Already added this user', { status: 400 })
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       'sismember',
       `user:${session.user.id}:friends`,
       idToAdd
-    )) as 0 | 1
+    )) as 0|1
 
     if (isAlreadyFriends) {
       return new Response('Already friends with this user', { status: 400 })
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
     // valid request, send friend request
 
-    await pusherServer.trigger(
+    pusherServer.trigger(
       toPusherKey(`user:${idToAdd}:incoming_friend_requests`),
       'incoming_friend_requests',
       {
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       }
     )
 
-    await db.sadd(`user:${idToAdd}:incoming_friend_requests`, session.user.id)
+    db.sadd(`user:${idToAdd}:incoming_friend_requests`, session.user.id)
 
     return new Response('OK')
   } catch (error) {
